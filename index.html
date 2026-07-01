@@ -22,14 +22,17 @@ input,textarea,button,select{font-family:inherit;font-size:inherit}
 /* ── LAYOUT ── */
 .section{position:fixed;left:0;right:0;bottom:calc(var(--tab)+var(--safe-bot));top:var(--safe-top);overflow-y:scroll;-webkit-overflow-scrolling:touch;display:none;flex-direction:column;background:var(--bg)}
 .section.active{display:flex}
-.section-inner{padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px}
+.section-inner{padding:16px 16px 24px;display:flex;flex-direction:column;gap:14px}
 
 /* ── TAB BAR ── */
-#tab-bar{position:fixed;bottom:0;left:0;right:0;height:calc(var(--tab)+var(--safe-bot));background:var(--card);border-top:1px solid rgba(0,0,0,.08);display:flex;padding-bottom:var(--safe-bot);z-index:100;box-shadow:0 -2px 16px rgba(0,0,0,.06)}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--t3);font-size:10px;font-weight:500;cursor:pointer;transition:color .15s;padding-top:8px}
+#tab-bar{position:fixed;bottom:0;left:0;right:0;height:calc(var(--tab)+var(--safe-bot));background:var(--card);border-top:1px solid rgba(0,0,0,.08);display:flex;align-items:center;padding-bottom:var(--safe-bot);z-index:100;box-shadow:0 -2px 16px rgba(0,0,0,.06)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--t3);font-size:10px;font-weight:500;cursor:pointer;transition:color .15s;padding-top:8px;height:100%}
 .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tab.active{color:var(--orange)}
 .tab.active svg{stroke:var(--orange)}
+.tab-add{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding-top:4px;height:100%}
+.tab-add-circle{width:46px;height:46px;background:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;box-shadow:0 4px 14px rgba(232,98,42,.4);margin-top:-14px}
+.tab-add span{font-size:10px;font-weight:500;color:var(--orange);margin-top:2px}
 
 /* ── CARDS ── */
 .card{background:var(--card);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
@@ -108,9 +111,6 @@ input,textarea,button,select{font-family:inherit;font-size:inherit}
 .btn-row{display:flex;gap:10px}
 .btn-row .btn-primary,.btn-row .btn-outline{flex:1}
 
-/* ── FAB ── */
-#fab{position:fixed;left:16px;right:16px;bottom:calc(var(--tab)+var(--safe-bot)+8px);height:52px;border-radius:20px;background:rgba(232,98,42,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;color:#fff;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 24px rgba(232,98,42,.35);z-index:99;transition:opacity .15s;letter-spacing:.01em}
-#fab:active{opacity:.8}
 
 /* ── MODALS ── */
 .modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;pointer-events:none;visibility:hidden}
@@ -364,26 +364,25 @@ input,textarea,button,select{font-family:inherit;font-size:inherit}
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
     <span>Dashboard</span>
   </button>
-  <button class="tab" data-sec="sec-accounts" onclick="showSection('sec-accounts')">
-    <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-    <span>Accounts</span>
-  </button>
   <button class="tab" data-sec="sec-transactions" onclick="showSection('sec-transactions')">
     <svg viewBox="0 0 24 24"><path d="M9 17H3l4-4m-4 4 4 4M15 7h6l-4-4m4 4-4 4"/></svg>
     <span>Transactions</span>
   </button>
-  <button class="tab" data-sec="sec-cashflow" onclick="showSection('sec-cashflow')">
-    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    <span>Cash Flow</span>
+  <button class="tab-add" onclick="openAddModal()">
+    <div class="tab-add-circle">+</div>
+    <span>Add</span>
   </button>
   <button class="tab" data-sec="sec-budget" onclick="showSection('sec-budget')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
     <span>Budget</span>
   </button>
+  <button class="tab" data-sec="sec-accounts" onclick="showSection('sec-accounts')">
+    <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+    <span>More</span>
+  </button>
 </nav>
 
 <!-- ── FAB ── -->
-<button id="fab" onclick="openAddModal()">＋ Add Transaction</button>
 
 <!-- ── HAMBURGER (settings) ── -->
 <button id="settings-btn" onclick="openDrawer()" style="position:fixed;top:calc(44px + var(--safe-top) - 6px);right:16px;z-index:210;background:none;border:none;padding:8px;cursor:pointer;display:none">
