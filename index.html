@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.5</div>
+      <div class="settings-desc" id="version-badge">v1.6</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.5</div>
+<div id="version-corner">v1.6</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -870,17 +870,37 @@ function parseReceiptText(text){
   }
   if(!amount&&amountMatches.length)amount=Math.max(...amountMatches);
 
-  // Merchant: find the best line in the first 6 lines
-  // Skip: phone numbers, addresses, short noise, lines with too many digits, codes
+  // Merchant: check full text for known store names first, then fall back to line detection
+  const KNOWN_MERCHANTS=[
+    ['walmart','Walmart'],['target','Target'],['kroger','Kroger'],['aldi','ALDI'],
+    ['publix','Publix'],['whole foods','Whole Foods'],['trader joe','Trader Joe\'s'],
+    ['meijer','Meijer'],['safeway','Safeway'],['wegmans','Wegmans'],['food lion','Food Lion'],
+    ['amazon','Amazon'],['best buy','Best Buy'],['home depot','Home Depot'],
+    ['lowe\'s','Lowe\'s'],['lowes',"Lowe's"],['ikea','IKEA'],['costco','Costco'],
+    ["sam's club","Sam's Club"],['dollar tree','Dollar Tree'],['dollar general','Dollar General'],
+    ['five below','Five Below'],['tj maxx','TJ Maxx'],['marshalls','Marshalls'],
+    ['ross dress','Ross'],['kohl','Kohl\'s'],['macy','Macy\'s'],['nordstrom','Nordstrom'],
+    ['mcdonald','McDonald\'s'],['burger king','Burger King'],["wendy's",'Wendy\'s'],['wendys',"Wendy's"],
+    ['taco bell','Taco Bell'],['chipotle','Chipotle'],['subway','Subway'],
+    ['starbucks','Starbucks'],['dunkin','Dunkin\''],['chick-fil','Chick-fil-A'],
+    ['domino','Domino\'s'],['pizza hut','Pizza Hut'],['panera','Panera'],
+    ['applebee','Applebee\'s'],['olive garden','Olive Garden'],
+    ['cvs','CVS'],['walgreen','Walgreens'],['rite aid','Rite Aid'],
+    ['shell','Shell'],['bp','BP'],['exxon','Exxon'],['chevron','Chevron'],
+    ['mobil','Mobil'],['speedway','Speedway'],['sheetz','Sheetz'],['wawa','Wawa'],
+    ['petco','Petco'],['petsmart','PetSmart'],
+  ];
+  const tLow=text.toLowerCase();
+  const knownMatch=KNOWN_MERCHANTS.find(([k])=>tLow.includes(k));
   const isNoiseLine=l=>{
     if(l.length<3)return true;
-    if(/^\d[\d\s\-\(\)]{6,}$/.test(l))return true; // phone number
-    if(/\d+\s+\w+\s+(st|ave|blvd|dr|rd|ln|way|ct)\b/i.test(l))return true; // address
-    if(/^(st#|op#|te#|tr#|ref|aid|tc#|trans|terminal|approval|manager|save money)/i.test(l))return true;
-    if((l.match(/\d/g)||[]).length>l.length*0.5)return true; // mostly digits
+    if(/^\d[\d\s\-\(\)]{6,}$/.test(l))return true;
+    if(/\d+\s+\w+\s+(st|ave|blvd|dr|rd|ln|way|ct)\b/i.test(l))return true;
+    if(/^(st#|op#|te#|tr#|ref|aid|tc#|trans|terminal|approval|manager|save money|low price)/i.test(l))return true;
+    if((l.match(/\d/g)||[]).length>l.length*0.5)return true;
     return false;
   };
-  const merchant=lines.slice(0,8).find(l=>!isNoiseLine(l))||lines.find(l=>l.length>2)||null;
+  const merchant=knownMatch?knownMatch[1]:lines.slice(0,8).find(l=>!isNoiseLine(l))||null;
 
   // Date: look for common date patterns
   let date=null;
