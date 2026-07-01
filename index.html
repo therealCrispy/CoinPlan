@@ -7,7 +7,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
   --bg:#0d1117;--s1:#161b22;--s2:#21262d;--s3:#30363d;
@@ -168,7 +167,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div class="section-title">CoinPlan</div>
       <button class="icon-btn" onclick="openIncomeModal()">
-        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.26c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1H6.3c.12 2.19 1.76 3.42 3.7 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.36c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1H6.3c.12 2.19 1.76 3.42 3.7 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
         Log Pay
       </button>
     </div>
@@ -251,7 +250,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v2.2</div>
+      <div class="settings-desc" id="version-badge">v2.3</div>
     </div>
   </div>
 </section>
@@ -279,7 +278,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v2.2</div>
+<div id="version-corner">v2.3</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
