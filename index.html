@@ -20,8 +20,8 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:-apple-sy
 input,textarea,button,select{font-family:inherit;font-size:inherit}
 
 /* ── LAYOUT ── */
-.section{position:fixed;left:0;right:0;bottom:calc(var(--tab)+var(--safe-bot));top:var(--safe-top);overflow-y:scroll;-webkit-overflow-scrolling:touch;display:none;flex-direction:column;background:var(--bg)}
-.section.active{display:flex}
+.section{position:fixed;left:0;right:0;bottom:calc(var(--tab)+var(--safe-bot));top:var(--safe-top);overflow-y:scroll;-webkit-overflow-scrolling:touch;display:none;background:var(--bg)}
+.section.active{display:block}
 .section-inner{padding:16px 16px 24px;display:flex;flex-direction:column;gap:14px}
 
 /* ── TAB BAR ── */
