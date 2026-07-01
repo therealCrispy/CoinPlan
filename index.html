@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.4</div>
+      <div class="settings-desc" id="version-badge">v1.5</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.4</div>
+<div id="version-corner">v1.5</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -448,24 +448,25 @@ const GEMINI_KEY = 'AQ.Ab8RN6LrLTRwCw1nJkTuFbnW_Mt4S5ucCVFo0vixvLQQLCQPgg';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const CATEGORIES = [
-  {id:'food',label:'Food',icon:'🍔'},
+  {id:'groceries',label:'Groceries',icon:'🛒'},
+  {id:'dining',label:'Dining',icon:'🍔'},
   {id:'gas',label:'Gas',icon:'⛽'},
   {id:'shopping',label:'Shopping',icon:'🛍️'},
-  {id:'entertainment',label:'Fun',icon:'🎮'},
+  {id:'entertainment',label:'Entertainment',icon:'🎮'},
   {id:'health',label:'Health',icon:'💊'},
-  {id:'transport',label:'Transport',icon:'🚗'},
+  {id:'pet',label:'Pet',icon:'🐾'},
   {id:'bills',label:'Bills',icon:'📄'},
   {id:'other',label:'Other',icon:'💸'},
 ];
 
 const CAT_COLORS = {
-  food:'rgba(210,153,34,.15)',gas:'rgba(88,166,255,.15)',shopping:'rgba(155,93,229,.15)',
-  entertainment:'rgba(63,185,80,.15)',health:'rgba(248,81,73,.15)',transport:'rgba(88,166,255,.15)',
-  bills:'rgba(248,81,73,.15)',other:'rgba(139,148,158,.15)',income:'rgba(46,160,67,.15)'
+  groceries:'rgba(63,185,80,.15)',dining:'rgba(210,153,34,.15)',gas:'rgba(88,166,255,.15)',
+  shopping:'rgba(155,93,229,.15)',entertainment:'rgba(248,81,73,.12)',health:'rgba(248,81,73,.15)',
+  pet:'rgba(210,153,34,.12)',bills:'rgba(248,81,73,.15)',other:'rgba(139,148,158,.15)',income:'rgba(46,160,67,.15)'
 };
 const CAT_TEXT = {
-  food:'#d29922',gas:'#58a6ff',shopping:'#9b5de5',entertainment:'#3fb950',
-  health:'#f85149',transport:'#58a6ff',bills:'#f85149',other:'#8b949e',income:'#3fb950'
+  groceries:'#3fb950',dining:'#d29922',gas:'#58a6ff',shopping:'#9b5de5',
+  entertainment:'#f85149',health:'#f85149',pet:'#d29922',bills:'#f85149',other:'#8b949e',income:'#3fb950'
 };
 
 const LS = {
@@ -869,8 +870,17 @@ function parseReceiptText(text){
   }
   if(!amount&&amountMatches.length)amount=Math.max(...amountMatches);
 
-  // Merchant: first non-empty line that looks like a name (not all numbers)
-  const merchant=lines.find(l=>l.length>2&&!/^\d/.test(l)&&!/^\$/.test(l))||null;
+  // Merchant: find the best line in the first 6 lines
+  // Skip: phone numbers, addresses, short noise, lines with too many digits, codes
+  const isNoiseLine=l=>{
+    if(l.length<3)return true;
+    if(/^\d[\d\s\-\(\)]{6,}$/.test(l))return true; // phone number
+    if(/\d+\s+\w+\s+(st|ave|blvd|dr|rd|ln|way|ct)\b/i.test(l))return true; // address
+    if(/^(st#|op#|te#|tr#|ref|aid|tc#|trans|terminal|approval|manager|save money)/i.test(l))return true;
+    if((l.match(/\d/g)||[]).length>l.length*0.5)return true; // mostly digits
+    return false;
+  };
+  const merchant=lines.slice(0,8).find(l=>!isNoiseLine(l))||lines.find(l=>l.length>2)||null;
 
   // Date: look for common date patterns
   let date=null;
@@ -885,12 +895,14 @@ function parseReceiptText(text){
   // Category: keyword match on full text
   const t=text.toLowerCase();
   let category='other';
-  if(/restaurant|cafe|coffee|pizza|burger|taco|chipotle|mcdonald|subway|chick|diner|grill|sushi|deli|bakery|food|grocery|supermarket|walmart|target|kroger|aldi|publix|whole foods|trader joe|fresh|market/i.test(t))category='food';
-  else if(/shell|bp|exxon|chevron|mobil|sunoco|marathon|speedway|sheetz|wawa|gas|fuel|petrol/i.test(t))category='gas';
-  else if(/amazon|ebay|shop|store|mall|fashion|clothing|apparel|best buy|home depot|lowes|ikea|costco|sams club/i.test(t))category='shopping';
-  else if(/netflix|spotify|hulu|disney|cinema|movie|theater|game|steam|entertainment/i.test(t))category='entertainment';
-  else if(/pharmacy|cvs|walgreen|rite aid|hospital|clinic|doctor|medical|health|dental/i.test(t))category='health';
-  else if(/uber|lyft|taxi|transit|metro|parking|toll|auto|repair/i.test(t))category='transport';
+  if(/shell|bp|exxon|chevron|mobil|sunoco|marathon|speedway|sheetz|wawa|gas station|fuel/i.test(t))category='gas';
+  else if(/restaurant|cafe|coffee|starbucks|dunkin|pizza|burger|taco|chipotle|mcdonald|subway|chick.fil|diner|grill|sushi|deli|bakery|applebee|waffle|ihop|sonic|wendy|domino|panera|five guys/i.test(t))category='dining';
+  else if(/kroger|aldi|publix|whole foods|trader joe|meijer|safeway|wegmans|food lion|giant|fresh market|sprouts|supermarket|grocery/i.test(t))category='groceries';
+  else if(/walmart|target|amazon|ebay|best buy|home depot|lowes|ikea|costco|sam.s club|dollar|tj maxx|marshalls|ross|kohls|jcpenney|macys|nordstrom/i.test(t))category='shopping';
+  else if(/netflix|spotify|hulu|disney|cinema|movie|theater|ticketmaster|steam|playstation|xbox|bowling|arcade|concert/i.test(t))category='entertainment';
+  else if(/pharmacy|cvs|walgreen|rite aid|hospital|clinic|doctor|medical|health|dental|vision|urgent care/i.test(t))category='health';
+  else if(/petco|petsmart|pet supplies|pet food|veterinary|vet clinic|animal/i.test(t))category='pet';
+  else if(/electric|water bill|internet|verizon|at&t|tmobile|comcast|xfinity|insurance|mortgage|rent/i.test(t))category='bills';
 
   return{merchant,amount,date,category};
 }
