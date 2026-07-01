@@ -444,7 +444,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
 const GEMINI_KEY = 'AQ.Ab8RN6LrLTRwCw1nJkTuFbnW_Mt4S5ucCVFo0vixvLQQLCQPgg';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 const CATEGORIES = [
   {id:'food',label:'Food',icon:'🍔'},
@@ -863,11 +863,8 @@ If you can't determine a field, use null. Today is ${todayISO()}.`;
       {inline_data:{mime_type:mimeType,data:base64}}
     ]}]
   };
-  // Try Bearer auth first (newer AQ. key format), fall back to query param (AIza format)
-  const isAQ=key.startsWith('AQ.');
-  const url=isAQ?GEMINI_URL:`${GEMINI_URL}?key=${key}`;
-  const headers={'Content-Type':'application/json'};
-  if(isAQ)headers['Authorization']=`Bearer ${key}`;
+  const url=key.startsWith('AIza')?`${GEMINI_URL}?key=${key}`:GEMINI_URL;
+  const headers={'Content-Type':'application/json','X-goog-api-key':key};
   const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
   if(!res.ok){
     const errText=await res.text();
