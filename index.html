@@ -250,7 +250,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.2</div>
+      <div class="settings-desc" id="version-badge">v1.3</div>
     </div>
   </div>
 </section>
@@ -278,7 +278,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.2</div>
+<div id="version-corner">v1.3</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -444,7 +444,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
 const GEMINI_KEY = 'AQ.Ab8RN6LrLTRwCw1nJkTuFbnW_Mt4S5ucCVFo0vixvLQQLCQPgg';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const CATEGORIES = [
   {id:'food',label:'Food',icon:'🍔'},
@@ -863,8 +863,8 @@ If you can't determine a field, use null. Today is ${todayISO()}.`;
       {inline_data:{mime_type:mimeType,data:base64}}
     ]}]
   };
-  const url=key.startsWith('AIza')?`${GEMINI_URL}?key=${key}`:GEMINI_URL;
-  const headers={'Content-Type':'application/json','X-goog-api-key':key};
+  const url=`${GEMINI_URL}?key=${key}`;
+  const headers={'Content-Type':'application/json'};
   const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
   if(!res.ok){
     const errText=await res.text();
