@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.7</div>
+      <div class="settings-desc" id="version-badge">v1.8</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.7</div>
+<div id="version-corner">v1.8</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -915,8 +915,9 @@ async function parseReceiptText(text,statusEl){
     if((l.match(/\d/g)||[]).length>l.length*0.5)return true;
     return false;
   };
-  let merchant=knownMatch?knownMatch[1]:lines.slice(0,8).find(l=>!isNoiseLine(l))||null;
+  let merchant=knownMatch?knownMatch[1]:null;
   if(!merchant)merchant=await getMerchantNER(text,statusEl);
+  if(!merchant)merchant=lines.slice(0,8).find(l=>!isNoiseLine(l))||null;
 
   // Date: look for common date patterns
   let date=null;
