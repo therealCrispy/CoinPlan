@@ -841,7 +841,7 @@ function handleScanFile(input){
       document.getElementById('scan-result').style.display='block';
       document.getElementById('scan-confirm-btns').style.display='block';
     }catch(err){
-      document.getElementById('scan-status').textContent='❌ Could not read receipt. Try again.';
+      document.getElementById('scan-status').textContent='❌ '+err.message;
       console.error(err);
     }
   };
