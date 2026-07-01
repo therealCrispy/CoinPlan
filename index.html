@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CoinPlan</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<style>
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#21262d;--s3:#30363d;
+  --t1:#e6edf3;--t2:#c9d1d9;--t3:#8b949e;--t4:#6e7681;
+  --accent:#2ea043;--accent2:#238636;--red:#f85149;--green:#3fb950;--yellow:#d29922;--blue:#58a6ff;
+  --tab:56px;--safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+input,textarea,button{font-family:inherit;font-size:inherit}
+
+/* ── LAYOUT ── */
+.section{position:fixed;inset:0;bottom:calc(var(--tab)+var(--safe-bot));top:calc(var(--safe-top));overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;flex-direction:column}
+.section.active{display:flex}
+.section-inner{padding:16px 16px calc(16px + var(--safe-top));display:flex;flex-direction:column;gap:12px;min-height:100%}
+.section-title{font-size:22px;font-weight:700;padding-top:4px}
+
+/* ── TAB BAR ── */
+#tab-bar{position:fixed;bottom:0;left:0;right:0;height:calc(var(--tab)+var(--safe-bot));background:var(--s1);border-top:1px solid var(--s3);display:flex;padding-bottom:var(--safe-bot);z-index:100}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--t4);font-size:10px;font-weight:500;cursor:pointer;transition:color .15s}
+.tab svg{width:22px;height:22px;fill:currentColor}
+.tab.active{color:var(--accent)}
+
+/* ── CARDS ── */
+.card{background:var(--s1);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.card-title{font-size:13px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+
+/* ── HERO SUMMARY ── */
+.hero{background:linear-gradient(135deg,#1a2e1a,#162219);border:1px solid #2ea04330;border-radius:20px;padding:20px}
+.hero-label{font-size:12px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.hero-amount{font-size:42px;font-weight:800;color:var(--green);line-height:1.1;margin:4px 0 2px}
+.hero-amount.danger{color:var(--red)}
+.hero-amount.warn{color:var(--yellow)}
+.hero-sub{font-size:13px;color:var(--t3)}
+.hero-row{display:flex;gap:10px;margin-top:14px}
+.hero-stat{flex:1;background:rgba(255,255,255,.04);border-radius:12px;padding:10px 12px}
+.hero-stat-lbl{font-size:11px;color:var(--t3);margin-bottom:3px}
+.hero-stat-val{font-size:16px;font-weight:700}
+.hero-stat-val.pos{color:var(--green)}
+.hero-stat-val.neg{color:var(--red)}
+.hero-stat-val.neu{color:var(--t2)}
+
+/* ── PROGRESS BAR ── */
+.prog-wrap{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-top:14px}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s;background:var(--green)}
+.prog-fill.warn{background:var(--yellow)}
+.prog-fill.danger{background:var(--red)}
+
+/* ── TRANSACTION ROW ── */
+.tx-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--s2)}
+.tx-row:last-child{border-bottom:none}
+.tx-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.tx-info{flex:1;min-width:0}
+.tx-merchant{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-meta{font-size:12px;color:var(--t3);margin-top:2px}
+.tx-amount{font-size:16px;font-weight:700;flex-shrink:0}
+.tx-amount.expense{color:var(--red)}
+.tx-amount.income{color:var(--green)}
+
+/* ── BILL ROW ── */
+.bill-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--s2)}
+.bill-row:last-child{border-bottom:none}
+.bill-icon{width:40px;height:40px;border-radius:12px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.bill-info{flex:1;min-width:0}
+.bill-name{font-size:15px;font-weight:600}
+.bill-meta{font-size:12px;color:var(--t3);margin-top:2px}
+.bill-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.bill-amount{font-size:16px;font-weight:700;color:var(--t1)}
+.due-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(248,81,73,.15);color:var(--red)}
+.due-badge.soon{background:rgba(210,153,34,.15);color:var(--yellow)}
+.due-badge.ok{background:rgba(63,185,80,.1);color:var(--green)}
+
+/* ── WEEK GROUP ── */
+.week-header{font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:8px 0 4px}
+
+/* ── BUTTONS ── */
+.btn-primary{width:100%;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-primary:active{opacity:.75}
+.btn-outline{width:100%;background:transparent;color:var(--t1);border:1.5px solid var(--s3);border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-outline:active{background:var(--s2)}
+.btn-row{display:flex;gap:10px}
+.btn-row .btn-primary,.btn-row .btn-outline{flex:1}
+.icon-btn{background:var(--s2);border:none;border-radius:12px;padding:10px 14px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.icon-btn:active{opacity:.7}
+.icon-btn svg{width:18px;height:18px;fill:currentColor}
+
+/* ── FAB ── */
+#fab{position:fixed;right:20px;bottom:calc(var(--tab)+var(--safe-bot)+16px);width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(46,160,67,.4);z-index:99;transition:transform .15s}
+#fab:active{transform:scale(.9)}
+
+/* ── MODALS ── */
+.modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;pointer-events:none;visibility:hidden}
+.modal.open{pointer-events:auto;visibility:visible}
+.modal-bd{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .25s}
+.modal.open .modal-bd{background:rgba(0,0,0,.7)}
+.modal-sheet{position:relative;width:100%;max-height:90vh;background:var(--s1);border-radius:20px 20px 0 0;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;padding-bottom:var(--safe-bot)}
+.modal.open .modal-sheet{transform:translateY(0)}
+.modal-handle{height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.modal-pill{width:36px;height:4px;background:var(--s3);border-radius:2px}
+.modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 24px}
+.modal-title{font-size:20px;font-weight:700;margin-bottom:16px}
+.modal-close{position:absolute;top:20px;right:16px;background:var(--s2);border:none;color:var(--t3);width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ── FORM ── */
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.form-lbl{font-size:13px;font-weight:600;color:var(--t3)}
+.form-input{background:var(--s2);border:1.5px solid var(--s3);border-radius:12px;padding:12px 14px;font-size:16px;color:var(--t1);outline:none;width:100%}
+.form-input:focus{border-color:var(--accent)}
+.form-row{display:flex;gap:10px}
+.form-row .form-group{flex:1}
+
+/* ── CATEGORY PILLS ── */
+.cat-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.cat-pill{padding:7px 14px;border-radius:20px;background:var(--s2);border:1.5px solid var(--s3);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.cat-pill.selected{border-color:var(--accent);background:rgba(46,160,67,.15);color:var(--accent)}
+
+/* ── SCAN AREA ── */
+.scan-area{border:2px dashed var(--s3);border-radius:16px;padding:32px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s;text-align:center}
+.scan-area:active{border-color:var(--accent)}
+.scan-area svg{width:40px;height:40px;fill:var(--t3)}
+.scan-preview{width:100%;border-radius:12px;max-height:220px;object-fit:cover;display:none}
+.scan-result{background:var(--s2);border-radius:12px;padding:14px;margin-top:10px;display:none}
+.scan-result-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:14px}
+.scan-result-row span:first-child{color:var(--t3)}
+.scan-result-row span:last-child{font-weight:600}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOGGLE ── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.toggle{position:relative;width:44px;height:26px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--s3);border-radius:13px;transition:.3s;cursor:pointer}
+.toggle-slider:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(18px)}
+
+/* ── SETTINGS ── */
+.settings-card{background:var(--s1);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.settings-title{font-size:17px;font-weight:700}
+.settings-desc{font-size:13px;color:var(--t3);line-height:1.5}
+.settings-btn{background:var(--s2);border:1.5px solid var(--s3);border-radius:12px;padding:11px 16px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer;text-align:left}
+.settings-btn.danger{color:var(--red);border-color:rgba(248,81,73,.3)}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:40px 20px;color:var(--t3);font-size:14px}
+.empty-icon{font-size:36px;margin-bottom:8px}
+
+/* ── VERSION ── */
+#version-corner{position:fixed;bottom:calc(var(--tab)+var(--safe-bot)+6px);left:10px;font-size:10px;color:var(--t4);z-index:99;pointer-events:none}
+</style>
+</head>
+<body>
+
+<!-- ── DASHBOARD ── -->
+<section id="sec-dashboard" class="section active">
+  <div class="section-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="section-title">CoinPlan</div>
+      <button class="icon-btn" onclick="openIncomeModal()">
+        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1H6.3c.12 2.19 1.76 3.42 3.7 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        Log Pay
+      </button>
+    </div>
+    <div class="hero" id="hero-card">
+      <div class="hero-label">Available This Week</div>
+      <div class="hero-amount" id="hero-available">$0</div>
+      <div class="hero-sub" id="hero-sub">No paycheck logged yet</div>
+      <div class="prog-wrap"><div class="prog-fill" id="hero-prog" style="width:0%"></div></div>
+      <div class="hero-row">
+        <div class="hero-stat">
+          <div class="hero-stat-lbl">Earned</div>
+          <div class="hero-stat-val pos" id="stat-earned">$0</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-lbl">Reserved</div>
+          <div class="hero-stat-val neg" id="stat-bills">$0</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-lbl">Spent</div>
+          <div class="hero-stat-val neg" id="stat-spent">$0</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent</div>
+      <div id="recent-list"></div>
+    </div>
+    <div class="card" id="bills-due-card">
+      <div class="card-title">Due This Week</div>
+      <div id="bills-due-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HISTORY ── -->
+<section id="sec-history" class="section">
+  <div class="section-inner">
+    <div class="section-title">History</div>
+    <div id="history-list"></div>
+  </div>
+</section>
+
+<!-- ── BILLS ── -->
+<section id="sec-bills" class="section">
+  <div class="section-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="section-title">Bills</div>
+      <button class="icon-btn" onclick="openAddBillModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Add
+      </button>
+    </div>
+    <div class="card" id="bills-monthly">
+      <div class="card-title">Monthly</div>
+      <div id="bills-monthly-list"></div>
+    </div>
+    <div class="card" id="bills-weekly-card" style="display:none">
+      <div class="card-title">Weekly</div>
+      <div id="bills-weekly-list"></div>
+    </div>
+    <div class="card" style="background:rgba(248,81,73,.06);border:1px solid rgba(248,81,73,.15)">
+      <div class="card-title" style="color:var(--red)">Monthly Total</div>
+      <div id="bills-total" style="font-size:28px;font-weight:800;color:var(--red)">$0</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SETTINGS ── -->
+<section id="sec-settings" class="section">
+  <div class="section-inner">
+    <div class="section-title">Settings</div>
+    <div class="settings-card">
+      <div class="settings-title">Gemini API Key</div>
+      <div class="settings-desc">Used for receipt scanning. Your key stays on this device.</div>
+      <input class="form-input" id="gemini-key-input" type="password" placeholder="Paste API key" oninput="saveGeminiKey()">
+    </div>
+    <div class="settings-card">
+      <div class="settings-title">Data</div>
+      <button class="settings-btn danger" onclick="clearAllData()">Clear All Data</button>
+    </div>
+    <div class="settings-card">
+      <div class="settings-title">Version</div>
+      <div class="settings-desc" id="version-badge">v1.0</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TAB BAR ── -->
+<nav id="tab-bar">
+  <button class="tab active" data-sec="sec-dashboard" onclick="showSection('sec-dashboard')">
+    <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="tab" data-sec="sec-history" onclick="showSection('sec-history')">
+    <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+    <span>History</span>
+  </button>
+  <button class="tab" data-sec="sec-bills" onclick="showSection('sec-bills')">
+    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+    <span>Bills</span>
+  </button>
+  <button class="tab" data-sec="sec-settings" onclick="showSection('sec-settings')">
+    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<!-- ── FAB ── -->
+<button id="fab" onclick="openAddModal()">+</button>
+
+<div id="version-corner">v1.0</div>
+
+<!-- ── MODAL: ADD TRANSACTION ── -->
+<div id="modal-add" class="modal">
+  <div class="modal-bd" onclick="closeModal('modal-add')"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"><div class="modal-pill"></div></div>
+    <button class="modal-close" onclick="closeModal('modal-add')">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-title">Add Expense</div>
+      <div class="form-group">
+        <label class="form-lbl">Amount</label>
+        <input class="form-input" id="add-amount" type="number" inputmode="decimal" placeholder="0.00" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Merchant / Description</label>
+        <input class="form-input" id="add-merchant" type="text" placeholder="Chipotle">
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Category</label>
+        <div class="cat-grid" id="cat-grid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Date</label>
+        <input class="form-input" id="add-date" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Note (optional)</label>
+        <input class="form-input" id="add-note" type="text" placeholder="Optional note">
+      </div>
+      <button class="btn-primary" onclick="saveTransaction()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: SCAN ── -->
+<div id="modal-scan" class="modal">
+  <div class="modal-bd" onclick="closeModal('modal-scan')"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"><div class="modal-pill"></div></div>
+    <button class="modal-close" onclick="closeModal('modal-scan')">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-title">Scan Receipt</div>
+      <input type="file" id="scan-file" accept="image/*" capture="environment" style="display:none" onchange="handleScanFile(this)">
+      <div class="scan-area" onclick="document.getElementById('scan-file').click()">
+        <svg viewBox="0 0 24 24"><path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.65 0-3 1.35-3 3s1.35 3 3 3 3-1.35 3-3-1.35-3-3-3z"/></svg>
+        <div style="font-weight:600;color:var(--t2)">Tap to take photo or upload</div>
+        <div style="font-size:12px;color:var(--t3)">Receipt or transaction screenshot</div>
+      </div>
+      <img id="scan-preview" class="scan-preview" alt="Receipt preview">
+      <div id="scan-status" style="text-align:center;color:var(--t3);font-size:14px;padding:12px 0;display:none"></div>
+      <div class="scan-result" id="scan-result">
+        <div class="scan-result-row"><span>Merchant</span><span id="sr-merchant">—</span></div>
+        <div class="scan-result-row"><span>Amount</span><span id="sr-amount">—</span></div>
+        <div class="scan-result-row"><span>Date</span><span id="sr-date">—</span></div>
+        <div class="scan-result-row"><span>Category</span><span id="sr-category">—</span></div>
+      </div>
+      <div id="scan-confirm-btns" style="display:none;margin-top:14px">
+        <button class="btn-primary" onclick="confirmScan()">Save Transaction</button>
+        <button class="btn-outline" style="margin-top:8px" onclick="editScanned()">Edit Before Saving</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: LOG INCOME ── -->
+<div id="modal-income" class="modal">
+  <div class="modal-bd" onclick="closeModal('modal-income')"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"><div class="modal-pill"></div></div>
+    <button class="modal-close" onclick="closeModal('modal-income')">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-title">Log Paycheck</div>
+      <div class="form-group">
+        <label class="form-lbl">Amount (after tax)</label>
+        <input class="form-input" id="income-amount" type="number" inputmode="decimal" placeholder="0.00" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Note (optional)</label>
+        <input class="form-input" id="income-note" type="text" placeholder="Regular pay, per diem, etc.">
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Date</label>
+        <input class="form-input" id="income-date" type="date">
+      </div>
+      <button class="btn-primary" onclick="saveIncome()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD BILL ── -->
+<div id="modal-bill" class="modal">
+  <div class="modal-bd" onclick="closeModal('modal-bill')"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"><div class="modal-pill"></div></div>
+    <button class="modal-close" onclick="closeModal('modal-bill')">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-title" id="bill-modal-title">Add Bill</div>
+      <input type="hidden" id="bill-edit-id">
+      <div class="form-group">
+        <label class="form-lbl">Name</label>
+        <input class="form-input" id="bill-name" type="text" placeholder="Netflix, Rent, etc.">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-lbl">Amount</label>
+          <input class="form-input" id="bill-amount" type="number" inputmode="decimal" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Frequency</label>
+          <select class="form-input" id="bill-freq">
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Biweekly</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="bill-due-group">
+        <label class="form-lbl">Due Day of Month</label>
+        <input class="form-input" id="bill-due" type="number" min="1" max="31" placeholder="1–31">
+      </div>
+      <div class="toggle-row" id="bill-spread-row">
+        <div>
+          <div style="font-size:14px;font-weight:600">Spread across weeks</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px">Reserve a portion every week instead of all at once</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="bill-spread"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Category</label>
+        <div class="cat-grid" id="bill-cat-grid"></div>
+      </div>
+      <button class="btn-primary" onclick="saveBill()">Save</button>
+      <button class="btn-outline" id="bill-delete-btn" style="margin-top:8px;display:none;color:var(--red);border-color:rgba(248,81,73,.3)" onclick="deleteBill()">Delete Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD/SCAN CHOICE ── -->
+<div id="modal-choice" class="modal">
+  <div class="modal-bd" onclick="closeModal('modal-choice')"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"><div class="modal-pill"></div></div>
+    <div class="modal-body" style="padding-bottom:32px">
+      <div class="modal-title">Add</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn-outline" style="display:flex;align-items:center;gap:12px;padding:16px" onclick="closeModal('modal-choice');setTimeout(()=>openScanModal(),200)">
+          <span style="font-size:24px">📷</span>
+          <div style="text-align:left"><div style="font-weight:700">Scan Receipt</div><div style="font-size:12px;color:var(--t3)">Take a photo or upload a screenshot</div></div>
+        </button>
+        <button class="btn-outline" style="display:flex;align-items:center;gap:12px;padding:16px" onclick="closeModal('modal-choice');setTimeout(()=>openAddManual(),200)">
+          <span style="font-size:24px">✏️</span>
+          <div style="text-align:left"><div style="font-weight:700">Manual Entry</div><div style="font-size:12px;color:var(--t3)">Type in the details yourself</div></div>
+        </button>
+        <button class="btn-outline" style="display:flex;align-items:center;gap:12px;padding:16px" onclick="closeModal('modal-choice');setTimeout(()=>openIncomeModal(),200)">
+          <span style="font-size:24px">💵</span>
+          <div style="text-align:left"><div style="font-weight:700">Log Paycheck</div><div style="font-size:12px;color:var(--t3)">Record income for this week</div></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const GEMINI_KEY = '';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+const CATEGORIES = [
+  {id:'food',label:'Food',icon:'🍔'},
+  {id:'gas',label:'Gas',icon:'⛽'},
+  {id:'shopping',label:'Shopping',icon:'🛍️'},
+  {id:'entertainment',label:'Fun',icon:'🎮'},
+  {id:'health',label:'Health',icon:'💊'},
+  {id:'transport',label:'Transport',icon:'🚗'},
+  {id:'bills',label:'Bills',icon:'📄'},
+  {id:'other',label:'Other',icon:'💸'},
+];
+
+const CAT_COLORS = {
+  food:'rgba(210,153,34,.15)',gas:'rgba(88,166,255,.15)',shopping:'rgba(155,93,229,.15)',
+  entertainment:'rgba(63,185,80,.15)',health:'rgba(248,81,73,.15)',transport:'rgba(88,166,255,.15)',
+  bills:'rgba(248,81,73,.15)',other:'rgba(139,148,158,.15)',income:'rgba(46,160,67,.15)'
+};
+const CAT_TEXT = {
+  food:'#d29922',gas:'#58a6ff',shopping:'#9b5de5',entertainment:'#3fb950',
+  health:'#f85149',transport:'#58a6ff',bills:'#f85149',other:'#8b949e',income:'#3fb950'
+};
+
+const LS = {
+  transactions:'cp_transactions',
+  income:'cp_income',
+  bills:'cp_bills',
+};
+
+// ── STORAGE ─────────────────────────────────────────────────
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+
+function getTransactions(){return lsGet(LS.transactions,[])}
+function getIncomeEntries(){return lsGet(LS.income,[])}
+function getBills(){return lsGet(LS.bills,[])}
+
+// ── DATE UTILS ──────────────────────────────────────────────
+function d0(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
+function sameDay(a,b){return d0(a).getTime()===d0(b).getTime()}
+function getMondayOf(d){const dt=d0(d),day=dt.getDay();dt.setDate(dt.getDate()-(day===0?6:day-1));return dt}
+function getSundayOf(d){const mon=getMondayOf(d);const sun=new Date(mon);sun.setDate(sun.getDate()+6);return sun}
+function fmtDate(d){return d0(d).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+function fmtFull(d){return d0(d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+function toISO(d){const x=d0(d);return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`}
+function todayISO(){return toISO(new Date())}
+function parseISO(s){return new Date(s+'T00:00:00')}
+function inWeek(dateStr,mon){
+  const d=d0(parseISO(dateStr)),m=d0(mon),sun=d0(getSundayOf(mon));
+  return d>=m&&d<=sun;
+}
+
+// ── WEEKLY SUMMARY ──────────────────────────────────────────
+function getWeekSummary(){
+  const mon=getMondayOf(new Date());
+  const txs=getTransactions().filter(t=>inWeek(t.date,mon));
+  const inc=getIncomeEntries().filter(i=>inWeek(i.date,mon));
+  const earned=inc.reduce((s,i)=>s+i.amount,0);
+  const spent=txs.reduce((s,t)=>s+t.amount,0);
+  // Bills: spread bills always reserve weekly slice; non-spread only deduct in their due week
+  const reserved=getWeeklyBillsReserved(mon);
+  const available=earned-reserved-spent;
+  return{earned,reserved,spent,available,mon};
+}
+
+// Returns total amount to reserve THIS week across all active bills
+function getWeeklyBillsReserved(mon){
+  return getBills().filter(b=>b.active).reduce((sum,b)=>{
+    if(b.frequency==='weekly')return sum+b.amount;
+    if(b.frequency==='biweekly')return sum+b.amount/2;
+    if(b.frequency==='monthly'){
+      if(b.spread){
+        // Always reserve 1/4.33 of monthly amount every week
+        return sum+b.amount/4.33;
+      } else {
+        // Only deduct in the week the bill is actually due
+        const sun=getSundayOf(mon);
+        for(let d=new Date(mon);d<=sun;d.setDate(d.getDate()+1)){
+          if(d.getDate()===b.dueDay)return sum+b.amount;
+        }
+      }
+    }
+    return sum;
+  },0);
+}
+
+// Bills due or being reserved this week (for dashboard display)
+function getBillsDueInWeek(mon){
+  const sun=getSundayOf(mon);
+  return getBills().filter(b=>{
+    if(!b.active)return false;
+    if(b.frequency==='weekly'||b.frequency==='biweekly')return true;
+    if(b.frequency==='monthly'){
+      if(b.spread)return true; // always shown as reserving
+      for(let d=new Date(mon);d<=sun;d.setDate(d.getDate()+1)){
+        if(d.getDate()===b.dueDay)return true;
+      }
+    }
+    return false;
+  });
+}
+
+// ── RENDER DASHBOARD ────────────────────────────────────────
+function renderDashboard(){
+  const{earned,reserved,spent,available}=getWeekSummary();
+  const avEl=document.getElementById('hero-available');
+  avEl.textContent='$'+fmt(Math.abs(available));
+  avEl.className='hero-amount'+(available<0?' danger':available<earned*.2?' warn':'');
+  document.getElementById('hero-sub').textContent=
+    earned===0?'No paycheck logged yet — tap Log Pay':
+    available<0?`$${fmt(Math.abs(available))} over budget`:`of $${fmt(earned)} remaining`;
+  document.getElementById('stat-earned').textContent='$'+fmt(earned);
+  document.getElementById('stat-bills').textContent='$'+fmt(reserved);
+  document.getElementById('stat-spent').textContent='$'+fmt(spent);
+  const total=earned||1;
+  const usedPct=Math.min(100,Math.round(((reserved+spent)/total)*100));
+  const prog=document.getElementById('hero-prog');
+  prog.style.width=usedPct+'%';
+  prog.className='prog-fill'+(usedPct>90?' danger':usedPct>70?' warn':'');
+
+  // Recent transactions
+  const txs=getTransactions().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  const recentEl=document.getElementById('recent-list');
+  if(!txs.length){recentEl.innerHTML='<div class="empty"><div class="empty-icon">💳</div>No transactions yet</div>';return;}
+  recentEl.innerHTML=txs.map(t=>txRowHTML(t)).join('');
+
+  // Bills due this week
+  const mon=getMondayOf(new Date());
+  const dueBills=getBillsDueInWeek(mon);
+  const dueEl=document.getElementById('bills-due-list');
+  document.getElementById('bills-due-card').style.display=dueBills.length?'':'none';
+  dueEl.innerHTML=dueBills.map(b=>{
+    const weekAmt=b.spread?b.amount/4.33:b.amount;
+    const meta=b.spread?`Setting aside $${fmt(weekAmt)}/wk toward $${fmt(b.amount)}/mo`
+      :b.frequency==='weekly'?'Every week':`Due ${b.dueDay}${ordinal(b.dueDay)}`;
+    return`<div class="bill-row">
+      <div class="bill-icon">${catIcon(b.category)}</div>
+      <div class="bill-info"><div class="bill-name">${b.name}</div><div class="bill-meta">${meta}</div></div>
+      <div class="hero-stat-val neg">$${fmt(weekAmt)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER HISTORY ───────────────────────────────────────────
+function renderHistory(){
+  const txs=getTransactions().sort((a,b)=>b.date.localeCompare(a.date));
+  const inc=getIncomeEntries().sort((a,b)=>b.date.localeCompare(a.date));
+  const all=[
+    ...txs.map(t=>({...t,_type:'expense'})),
+    ...inc.map(i=>({...i,merchant:i.note||'Paycheck',category:'income',_type:'income'}))
+  ].sort((a,b)=>b.date.localeCompare(a.date));
+  const el=document.getElementById('history-list');
+  if(!all.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>No history yet</div>';return;}
+  // Group by week
+  const weeks={};
+  all.forEach(item=>{
+    const mon=getMondayOf(parseISO(item.date));
+    const key=toISO(mon);
+    if(!weeks[key])weeks[key]={mon,items:[]};
+    weeks[key].items.push(item);
+  });
+  el.innerHTML=Object.entries(weeks).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,{mon,items}])=>{
+    const sun=getSundayOf(mon);
+    const weekInc=items.filter(i=>i._type==='income').reduce((s,i)=>s+i.amount,0);
+    const weekSpent=items.filter(i=>i._type==='expense').reduce((s,i)=>s+i.amount,0);
+    return`<div class="week-header">${fmtDate(mon)} – ${fmtDate(sun)}</div>
+    <div class="card" style="padding:0 16px">
+      ${items.map(i=>txRowHTML(i,true)).join('')}
+      <div style="display:flex;justify-content:space-between;padding:10px 0 4px;border-top:1px solid var(--s2);font-size:13px;color:var(--t3)">
+        <span>In: <b style="color:var(--green)">+$${fmt(weekInc)}</b></span>
+        <span>Out: <b style="color:var(--red)">-$${fmt(weekSpent)}</b></span>
+        <span>Net: <b style="color:${weekInc-weekSpent>=0?'var(--green)':'var(--red)'}">${weekInc-weekSpent>=0?'+':'-'}$${fmt(Math.abs(weekInc-weekSpent))}</b></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function txRowHTML(t,showDel=false){
+  const isIncome=t._type==='income'||t.category==='income';
+  const icon=catIcon(t.category);
+  const bg=CAT_COLORS[t.category]||CAT_COLORS.other;
+  const sign=isIncome?'+':'-';
+  const cls=isIncome?'income':'expense';
+  return`<div class="tx-row" onclick="${showDel?`deleteTxPrompt('${t.id}')`:''}" style="${showDel?'cursor:pointer':''}">
+    <div class="tx-icon" style="background:${bg}">${icon}</div>
+    <div class="tx-info">
+      <div class="tx-merchant">${t.merchant||'Unknown'}</div>
+      <div class="tx-meta">${fmtFull(parseISO(t.date))}${t.note?` · ${t.note}`:''}</div>
+    </div>
+    <div class="tx-amount ${cls}">${sign}$${fmt(t.amount)}</div>
+  </div>`;
+}
+
+// ── RENDER BILLS ─────────────────────────────────────────────
+function renderBills(){
+  const bills=getBills();
+  const monthly=bills.filter(b=>b.frequency==='monthly');
+  const weekly=bills.filter(b=>b.frequency!=='monthly');
+  const total=bills.filter(b=>b.active).reduce((s,b)=>{
+    if(b.frequency==='weekly')return s+b.amount*4.33;
+    if(b.frequency==='biweekly')return s+b.amount*2.17;
+    return s+b.amount;
+  },0);
+  document.getElementById('bills-monthly-list').innerHTML=
+    monthly.length?monthly.map(b=>billRowHTML(b)).join(''):'<div class="empty" style="padding:20px 0"><div class="empty-icon">📄</div>No monthly bills yet</div>';
+  const wcard=document.getElementById('bills-weekly-card');
+  wcard.style.display=weekly.length?'':'none';
+  document.getElementById('bills-weekly-list').innerHTML=weekly.map(b=>billRowHTML(b)).join('');
+  document.getElementById('bills-total').textContent='$'+fmt(total)+'/mo';
+}
+
+function billRowHTML(b){
+  const today=new Date().getDate();
+  let dueText='',badgeCls='ok';
+  if(b.frequency==='monthly'){
+    if(b.spread){
+      dueText=`$${fmt(b.amount/4.33)}/wk → due ${b.dueDay}${ordinal(b.dueDay)}`;
+      badgeCls='ok';
+    } else {
+      const diff=b.dueDay-today;
+      dueText=diff<0?`Was due ${b.dueDay}${ordinal(b.dueDay)}`:diff===0?'Due today':`Due in ${diff}d`;
+      badgeCls=diff<0?'past':diff<=3?'soon':'ok';
+    }
+  } else {
+    dueText=b.frequency==='weekly'?'Every week':'Every 2 weeks';
+  }
+  const displayAmt=b.spread?`$${fmt(b.amount/4.33)}<span style="font-size:11px;color:var(--t3)">/wk</span>`:
+    `$${fmt(b.amount)}`;
+  return`<div class="bill-row" onclick="openEditBillModal('${b.id}')">
+    <div class="bill-icon">${catIcon(b.category)}</div>
+    <div class="bill-info">
+      <div class="bill-name">${b.name}</div>
+      <div class="bill-meta">${dueText}</div>
+    </div>
+    <div class="bill-right">
+      <div class="bill-amount">${displayAmt}</div>
+      <div class="due-badge ${badgeCls}">${b.active?(b.spread?'Spread':'Active'):'Paused'}</div>
+    </div>
+  </div>`;
+}
+
+function ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function fmt(n){return Number(n).toFixed(2).replace(/\.00$/,'')}
+function catIcon(id){return(CATEGORIES.find(c=>c.id===id)||{icon:'💸'}).icon+(id==='income'?'💵':'')}
+
+function renderCatGrid(containerId,selected,onSelect){
+  const el=document.getElementById(containerId);
+  el.innerHTML=CATEGORIES.map(c=>`
+    <div class="cat-pill${selected===c.id?' selected':''}" onclick="${onSelect}('${c.id}',this)">
+      ${c.icon} ${c.label}
+    </div>`).join('');
+}
+
+let _addCat='other',_billCat='bills';
+function selectAddCat(id){_addCat=id;renderCatGrid('cat-grid',_addCat,'selectAddCat')}
+function selectBillCat(id){_billCat=id;renderCatGrid('bill-cat-grid',_billCat,'selectBillCat')}
+
+// ── TRANSACTIONS ─────────────────────────────────────────────
+function openAddModal(){closeModal('modal-choice');openModal('modal-choice')}
+function openAddManual(){
+  _addCat='other';
+  document.getElementById('add-amount').value='';
+  document.getElementById('add-merchant').value='';
+  document.getElementById('add-note').value='';
+  document.getElementById('add-date').value=todayISO();
+  renderCatGrid('cat-grid',_addCat,'selectAddCat');
+  openModal('modal-add');
+}
+function saveTransaction(){
+  const amount=parseFloat(document.getElementById('add-amount').value);
+  const merchant=document.getElementById('add-merchant').value.trim()||'Unknown';
+  const date=document.getElementById('add-date').value||todayISO();
+  const note=document.getElementById('add-note').value.trim();
+  if(!amount||amount<=0)return alert('Enter a valid amount');
+  const txs=getTransactions();
+  txs.push({id:'tx_'+Date.now(),amount,merchant,category:_addCat,date,note});
+  lsSet(LS.transactions,txs);
+  closeModal('modal-add');
+  renderDashboard();renderHistory();
+}
+function deleteTxPrompt(id){
+  if(!confirm('Delete this transaction?'))return;
+  lsSet(LS.transactions,getTransactions().filter(t=>t.id!==id));
+  renderDashboard();renderHistory();
+}
+
+// ── INCOME ───────────────────────────────────────────────────
+function openIncomeModal(){
+  document.getElementById('income-amount').value='';
+  document.getElementById('income-note').value='';
+  document.getElementById('income-date').value=todayISO();
+  openModal('modal-income');
+}
+function saveIncome(){
+  const amount=parseFloat(document.getElementById('income-amount').value);
+  const note=document.getElementById('income-note').value.trim();
+  const date=document.getElementById('income-date').value||todayISO();
+  if(!amount||amount<=0)return alert('Enter a valid amount');
+  const inc=getIncomeEntries();
+  inc.push({id:'inc_'+Date.now(),amount,note,date});
+  lsSet(LS.income,inc);
+  closeModal('modal-income');
+  renderDashboard();renderHistory();
+}
+
+// ── BILLS ────────────────────────────────────────────────────
+let _editingBillId=null;
+function openAddBillModal(){
+  _editingBillId=null;_billCat='bills';
+  document.getElementById('bill-modal-title').textContent='Add Bill';
+  document.getElementById('bill-edit-id').value='';
+  document.getElementById('bill-name').value='';
+  document.getElementById('bill-amount').value='';
+  document.getElementById('bill-due').value='';
+  document.getElementById('bill-freq').value='monthly';
+  document.getElementById('bill-spread').checked=false;
+  document.getElementById('bill-delete-btn').style.display='none';
+  renderCatGrid('bill-cat-grid',_billCat,'selectBillCat');
+  openModal('modal-bill');
+}
+function openEditBillModal(id){
+  const b=getBills().find(x=>x.id===id);if(!b)return;
+  _editingBillId=id;_billCat=b.category||'bills';
+  document.getElementById('bill-modal-title').textContent='Edit Bill';
+  document.getElementById('bill-edit-id').value=id;
+  document.getElementById('bill-name').value=b.name;
+  document.getElementById('bill-amount').value=b.amount;
+  document.getElementById('bill-due').value=b.dueDay||'';
+  document.getElementById('bill-freq').value=b.frequency||'monthly';
+  document.getElementById('bill-spread').checked=!!b.spread;
+  document.getElementById('bill-delete-btn').style.display='';
+  renderCatGrid('bill-cat-grid',_billCat,'selectBillCat');
+  openModal('modal-bill');
+}
+function saveBill(){
+  const name=document.getElementById('bill-name').value.trim();
+  const amount=parseFloat(document.getElementById('bill-amount').value);
+  const frequency=document.getElementById('bill-freq').value;
+  const dueDay=parseInt(document.getElementById('bill-due').value)||1;
+  const spread=document.getElementById('bill-spread').checked;
+  if(!name)return alert('Enter a name');
+  if(!amount||amount<=0)return alert('Enter a valid amount');
+  const bills=getBills();
+  if(_editingBillId){
+    const idx=bills.findIndex(b=>b.id===_editingBillId);
+    if(idx>=0)bills[idx]={...bills[idx],name,amount,frequency,dueDay,category:_billCat,spread};
+  } else {
+    bills.push({id:'bill_'+Date.now(),name,amount,frequency,dueDay,category:_billCat,active:true,spread});
+  }
+  lsSet(LS.bills,bills);
+  closeModal('modal-bill');
+  renderBills();renderDashboard();
+}
+function deleteBill(){
+  if(!_editingBillId)return;
+  if(!confirm('Delete this bill?'))return;
+  lsSet(LS.bills,getBills().filter(b=>b.id!==_editingBillId));
+  closeModal('modal-bill');
+  renderBills();renderDashboard();
+}
+
+// ── RECEIPT SCAN ─────────────────────────────────────────────
+let _scannedData=null;
+function openScanModal(){
+  document.getElementById('scan-file').value='';
+  document.getElementById('scan-preview').style.display='none';
+  document.getElementById('scan-status').style.display='none';
+  document.getElementById('scan-result').style.display='none';
+  document.getElementById('scan-confirm-btns').style.display='none';
+  _scannedData=null;
+  openModal('modal-scan');
+}
+function handleScanFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const b64=e.target.result.split(',')[1];
+    const preview=document.getElementById('scan-preview');
+    preview.src=e.target.result;preview.style.display='block';
+    document.getElementById('scan-status').style.display='block';
+    document.getElementById('scan-status').innerHTML='<span class="spin">⚙️</span> Reading receipt...';
+    document.getElementById('scan-result').style.display='none';
+    document.getElementById('scan-confirm-btns').style.display='none';
+    try{
+      const result=await callGeminiVision(b64,file.type||'image/jpeg');
+      _scannedData=result;
+      document.getElementById('sr-merchant').textContent=result.merchant||'Unknown';
+      document.getElementById('sr-amount').textContent=result.amount?'$'+fmt(result.amount):'—';
+      document.getElementById('sr-date').textContent=result.date?fmtDate(parseISO(result.date)):'—';
+      document.getElementById('sr-category').textContent=
+        (CATEGORIES.find(c=>c.id===result.category)||{label:'Other'}).label;
+      document.getElementById('scan-status').style.display='none';
+      document.getElementById('scan-result').style.display='block';
+      document.getElementById('scan-confirm-btns').style.display='block';
+    }catch(err){
+      document.getElementById('scan-status').textContent='❌ Could not read receipt. Try again.';
+      console.error(err);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+async function callGeminiVision(base64,mimeType){
+  const key=localStorage.getItem('cp_gemini_key')||GEMINI_KEY;
+  const prompt=`You are a receipt parser. Extract the following from this receipt or transaction screenshot and return ONLY valid JSON, no markdown, no explanation:
+{
+  "merchant": "store or restaurant name",
+  "amount": 0.00,
+  "date": "YYYY-MM-DD",
+  "category": "one of: food, gas, shopping, entertainment, health, transport, bills, other"
+}
+If you can't determine a field, use null. Today is ${todayISO()}.`;
+  const body={
+    contents:[{parts:[
+      {text:prompt},
+      {inline_data:{mime_type:mimeType,data:base64}}
+    ]}]
+  };
+  const res=await fetch(`${GEMINI_URL}?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok)throw new Error('Gemini API error '+res.status);
+  const json=await res.json();
+  const text=json.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
+  const clean=text.replace(/```json|```/g,'').trim();
+  return JSON.parse(clean);
+}
+function confirmScan(){
+  if(!_scannedData)return;
+  const txs=getTransactions();
+  txs.push({
+    id:'tx_'+Date.now(),
+    amount:_scannedData.amount||0,
+    merchant:_scannedData.merchant||'Unknown',
+    category:_scannedData.category||'other',
+    date:_scannedData.date||todayISO(),
+    note:'Scanned'
+  });
+  lsSet(LS.transactions,txs);
+  closeModal('modal-scan');
+  renderDashboard();renderHistory();
+}
+function editScanned(){
+  if(!_scannedData)return;
+  closeModal('modal-scan');
+  setTimeout(()=>{
+    _addCat=_scannedData.category||'other';
+    document.getElementById('add-amount').value=_scannedData.amount||'';
+    document.getElementById('add-merchant').value=_scannedData.merchant||'';
+    document.getElementById('add-date').value=_scannedData.date||todayISO();
+    document.getElementById('add-note').value='';
+    renderCatGrid('cat-grid',_addCat,'selectAddCat');
+    openModal('modal-add');
+  },250);
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+function saveGeminiKey(){
+  const val=document.getElementById('gemini-key-input').value.trim();
+  localStorage.setItem('cp_gemini_key',val);
+}
+function clearAllData(){
+  if(!confirm('Delete all transactions, income, and bills? This cannot be undone.'))return;
+  Object.values(LS).forEach(k=>localStorage.removeItem(k));
+  renderDashboard();renderHistory();renderBills();
+}
+
+// ── MODAL UTILS ──────────────────────────────────────────────
+function openModal(id){
+  const m=document.getElementById(id);
+  m.classList.remove('hidden');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>m.classList.add('open')));
+}
+function closeModal(id){
+  const m=document.getElementById(id);
+  m.classList.remove('open');
+  setTimeout(()=>{},300);
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.tab[data-sec="${id}"]`)?.classList.add('active');
+  if(id==='sec-dashboard')renderDashboard();
+  if(id==='sec-history')renderHistory();
+  if(id==='sec-bills')renderBills();
+  if(id==='sec-settings'){
+    const k=localStorage.getItem('cp_gemini_key')||GEMINI_KEY;
+    document.getElementById('gemini-key-input').value=k;
+  }
+}
+
+// ── SEED FILLER DATA ─────────────────────────────────────────
+function seedData(){
+  if(lsGet('cp_seeded',false))return;
+  // Bills
+  lsSet(LS.bills,[
+    {id:'b1',name:'Rent',amount:999,frequency:'monthly',dueDay:1,category:'bills',active:true,spread:true},
+    {id:'b2',name:'Car Insurance',amount:120,frequency:'monthly',dueDay:15,category:'transport',active:true,spread:true},
+    {id:'b3',name:'Phone',amount:85,frequency:'monthly',dueDay:20,category:'bills',active:true},
+    {id:'b4',name:'Netflix',amount:18,frequency:'monthly',dueDay:5,category:'entertainment',active:true},
+    {id:'b5',name:'Spotify',amount:11,frequency:'monthly',dueDay:8,category:'entertainment',active:true},
+    {id:'b6',name:'Gym',amount:30,frequency:'monthly',dueDay:1,category:'health',active:true},
+    {id:'b7',name:'Internet',amount:60,frequency:'monthly',dueDay:10,category:'bills',active:true},
+  ]);
+  // Income this week
+  const mon=toISO(getMondayOf(new Date()));
+  lsSet(LS.income,[{id:'i1',amount:680,note:'Regular pay',date:mon}]);
+  // Some transactions this week
+  const today=todayISO();
+  const yday=toISO(new Date(new Date().setDate(new Date().getDate()-1)));
+  const twoda=toISO(new Date(new Date().setDate(new Date().getDate()-2)));
+  lsSet(LS.transactions,[
+    {id:'t1',amount:13.50,merchant:'Chipotle',category:'food',date:today,note:''},
+    {id:'t2',amount:48.00,merchant:'Sheetz',category:'gas',date:yday,note:''},
+    {id:'t3',amount:92.00,merchant:'Walmart',category:'shopping',date:yday,note:''},
+    {id:'t4',amount:6.25,merchant:'Starbucks',category:'food',date:twoda,note:''},
+    {id:'t5',amount:34.00,merchant:'Applebees',category:'food',date:twoda,note:''},
+  ]);
+  lsSet('cp_seeded',true);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+function init(){
+  seedData();
+  renderDashboard();
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
