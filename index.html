@@ -168,7 +168,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div class="section-title">CoinPlan</div>
       <button class="icon-btn" onclick="openIncomeModal()">
-        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1H6.3c.12 2.19 1.76 3.42 3.7 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.26c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1H6.3c.12 2.19 1.76 3.42 3.7 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
         Log Pay
       </button>
     </div>
@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v2.1</div>
+      <div class="settings-desc" id="version-badge">v2.2</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v2.1</div>
+<div id="version-corner">v2.2</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -851,11 +851,27 @@ function handleScanFile(input){
 }
 const WORKER_URL='https://coinplan-receipt.coinplan-brody.workers.dev';
 
+function compressImage(dataUrl,maxPx,quality){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1,maxPx/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');
+      c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg',quality));
+    };
+    img.src=dataUrl;
+  });
+}
+
 async function scanWithOCR(imageDataUrl){
   const statusEl=document.getElementById('scan-status');
   statusEl.innerHTML='<span class="spin">⚙️</span> Reading receipt...';
-  // Strip data URL prefix, send raw base64 to Worker
-  const base64=imageDataUrl.replace(/^data:image\/\w+;base64,/,'');
+  // Compress to ~80KB before sending (Cloudflare free tier 128KB body limit)
+  const compressed=await compressImage(imageDataUrl,1024,0.7);
+  const base64=compressed.replace(/^data:image\/\w+;base64,/,'');
   const res=await fetch(WORKER_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
