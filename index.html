@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.8</div>
+      <div class="settings-desc" id="version-badge">v1.9</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.8</div>
+<div id="version-corner">v1.9</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -868,6 +868,8 @@ async function scanWithOCR(imageDataUrl){
   statusEl.innerHTML='<span class="spin">⚙️</span> Reading receipt...';
   const result=await Tesseract.recognize(imageDataUrl,'eng',{logger:()=>{}});
   const text=result.data.text;
+  // DEBUG: show raw OCR header
+  alert('OCR TOP:\n'+text.slice(0,300));
   return parseReceiptText(text,statusEl);
 }
 
