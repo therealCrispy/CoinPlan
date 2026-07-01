@@ -863,12 +863,22 @@ If you can't determine a field, use null. Today is ${todayISO()}.`;
       {inline_data:{mime_type:mimeType,data:base64}}
     ]}]
   };
-  const res=await fetch(`${GEMINI_URL}?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!res.ok)throw new Error('Gemini API error '+res.status);
+  // Try Bearer auth first (newer AQ. key format), fall back to query param (AIza format)
+  const isAQ=key.startsWith('AQ.');
+  const url=isAQ?GEMINI_URL:`${GEMINI_URL}?key=${key}`;
+  const headers={'Content-Type':'application/json'};
+  if(isAQ)headers['Authorization']=`Bearer ${key}`;
+  const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
+  if(!res.ok){
+    const errText=await res.text();
+    throw new Error(`Gemini ${res.status}: ${errText.slice(0,120)}`);
+  }
   const json=await res.json();
   const text=json.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
-  const clean=text.replace(/```json|```/g,'').trim();
-  return JSON.parse(clean);
+  // Extract JSON even if wrapped in markdown or extra text
+  const match=text.match(/\{[\s\S]*\}/);
+  if(!match)throw new Error('No JSON in response: '+text.slice(0,100));
+  return JSON.parse(match[0]);
 }
 function confirmScan(){
   if(!_scannedData)return;
