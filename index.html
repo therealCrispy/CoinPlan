@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root{
   --bg:#0d1117;--s1:#161b22;--s2:#21262d;--s3:#30363d;
@@ -250,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.3</div>
+      <div class="settings-desc" id="version-badge">v1.4</div>
     </div>
   </div>
 </section>
@@ -278,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.3</div>
+<div id="version-corner">v1.4</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -830,7 +831,7 @@ function handleScanFile(input){
     document.getElementById('scan-result').style.display='none';
     document.getElementById('scan-confirm-btns').style.display='none';
     try{
-      const result=await callGeminiVision(b64,file.type||'image/jpeg');
+      const result=await scanWithOCR(e.target.result);
       _scannedData=result;
       document.getElementById('sr-merchant').textContent=result.merchant||'Unknown';
       document.getElementById('sr-amount').textContent=result.amount?'$'+fmt(result.amount):'—';
@@ -847,35 +848,51 @@ function handleScanFile(input){
   };
   reader.readAsDataURL(file);
 }
-async function callGeminiVision(base64,mimeType){
-  const key=localStorage.getItem('cp_gemini_key')||GEMINI_KEY;
-  const prompt=`You are a receipt parser. Extract the following from this receipt or transaction screenshot and return ONLY valid JSON, no markdown, no explanation:
-{
-  "merchant": "store or restaurant name",
-  "amount": 0.00,
-  "date": "YYYY-MM-DD",
-  "category": "one of: food, gas, shopping, entertainment, health, transport, bills, other"
+async function scanWithOCR(imageDataUrl){
+  document.getElementById('scan-status').innerHTML='<span class="spin">⚙️</span> Reading receipt...';
+  const result=await Tesseract.recognize(imageDataUrl,'eng',{logger:()=>{}});
+  const text=result.data.text;
+  return parseReceiptText(text);
 }
-If you can't determine a field, use null. Today is ${todayISO()}.`;
-  const body={
-    contents:[{parts:[
-      {text:prompt},
-      {inline_data:{mime_type:mimeType,data:base64}}
-    ]}]
-  };
-  const url=`${GEMINI_URL}?key=${key}`;
-  const headers={'Content-Type':'application/json'};
-  const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
-  if(!res.ok){
-    const errText=await res.text();
-    throw new Error(`Gemini ${res.status}: ${errText.slice(0,120)}`);
+
+function parseReceiptText(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+
+  // Amount: find the largest dollar amount (likely the total)
+  const amountMatches=[...text.matchAll(/\$?\s*(\d+\.\d{2})/g)].map(m=>parseFloat(m[1]));
+  // Also look for TOTAL line specifically
+  let amount=null;
+  const totalLine=lines.find(l=>/total/i.test(l)&&!/sub.?total/i.test(l));
+  if(totalLine){
+    const m=totalLine.match(/(\d+\.\d{2})/);
+    if(m)amount=parseFloat(m[1]);
   }
-  const json=await res.json();
-  const text=json.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
-  // Extract JSON even if wrapped in markdown or extra text
-  const match=text.match(/\{[\s\S]*\}/);
-  if(!match)throw new Error('No JSON in response: '+text.slice(0,100));
-  return JSON.parse(match[0]);
+  if(!amount&&amountMatches.length)amount=Math.max(...amountMatches);
+
+  // Merchant: first non-empty line that looks like a name (not all numbers)
+  const merchant=lines.find(l=>l.length>2&&!/^\d/.test(l)&&!/^\$/.test(l))||null;
+
+  // Date: look for common date patterns
+  let date=null;
+  const dateMatch=text.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+  if(dateMatch){
+    let[,m,d,y]=dateMatch;
+    if(y.length===2)y='20'+y;
+    date=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  if(!date)date=todayISO();
+
+  // Category: keyword match on full text
+  const t=text.toLowerCase();
+  let category='other';
+  if(/restaurant|cafe|coffee|pizza|burger|taco|chipotle|mcdonald|subway|chick|diner|grill|sushi|deli|bakery|food|grocery|supermarket|walmart|target|kroger|aldi|publix|whole foods|trader joe|fresh|market/i.test(t))category='food';
+  else if(/shell|bp|exxon|chevron|mobil|sunoco|marathon|speedway|sheetz|wawa|gas|fuel|petrol/i.test(t))category='gas';
+  else if(/amazon|ebay|shop|store|mall|fashion|clothing|apparel|best buy|home depot|lowes|ikea|costco|sams club/i.test(t))category='shopping';
+  else if(/netflix|spotify|hulu|disney|cinema|movie|theater|game|steam|entertainment/i.test(t))category='entertainment';
+  else if(/pharmacy|cvs|walgreen|rite aid|hospital|clinic|doctor|medical|health|dental/i.test(t))category='health';
+  else if(/uber|lyft|taxi|transit|metro|parking|toll|auto|repair/i.test(t))category='transport';
+
+  return{merchant,amount,date,category};
 }
 function confirmScan(){
   if(!_scannedData)return;
