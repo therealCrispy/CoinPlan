@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v2.0</div>
+      <div class="settings-desc" id="version-badge">v2.1</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v2.0</div>
+<div id="version-corner">v2.1</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -849,99 +849,26 @@ function handleScanFile(input){
   };
   reader.readAsDataURL(file);
 }
-let _nerPipeline=null;
-async function getMerchantNER(text,statusEl){
-  try{
-    if(!_nerPipeline){
-      if(statusEl)statusEl.innerHTML='<span class="spin">⚙️</span> Loading merchant model (first time only)...';
-      const {pipeline}=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
-      _nerPipeline=await pipeline('token-classification','Xenova/bert-base-NER',{aggregation_strategy:'simple'});
-    }
-    const entities=await _nerPipeline(text.slice(0,400));
-    const org=entities.find(e=>e.entity_group==='ORG'&&e.score>0.6);
-    return org?org.word.replace(/^##/,''):null;
-  }catch(e){return null;}
-}
+const WORKER_URL='https://coinplan-receipt.coinplan-brody.workers.dev';
 
 async function scanWithOCR(imageDataUrl){
   const statusEl=document.getElementById('scan-status');
   statusEl.innerHTML='<span class="spin">⚙️</span> Reading receipt...';
-  const result=await Tesseract.recognize(imageDataUrl,'eng',{logger:()=>{}});
-  const text=result.data.text;
-return parseReceiptText(text,statusEl);
+  // Strip data URL prefix, send raw base64 to Worker
+  const base64=imageDataUrl.replace(/^data:image\/\w+;base64,/,'');
+  const res=await fetch(WORKER_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({image:base64})
+  });
+  const data=await res.json();
+  if(data.error)throw new Error(data.error);
+  // Fallback date to today if Gemini couldn't read it
+  if(!data.date)data.date=todayISO();
+  if(!data.category)data.category='other';
+  return data;
 }
 
-async function parseReceiptText(text,statusEl){
-  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
-
-  // Amount: find the largest dollar amount (likely the total)
-  const amountMatches=[...text.matchAll(/\$?\s*(\d+\.\d{2})/g)].map(m=>parseFloat(m[1]));
-  // Also look for TOTAL line specifically
-  let amount=null;
-  const totalLine=lines.find(l=>/total/i.test(l)&&!/sub.?total/i.test(l));
-  if(totalLine){
-    const m=totalLine.match(/(\d+\.\d{2})/);
-    if(m)amount=parseFloat(m[1]);
-  }
-  if(!amount&&amountMatches.length)amount=Math.max(...amountMatches);
-
-  // Merchant: regex match against full OCR text (handles OCR garbling)
-  const KNOWN_MERCHANTS=[
-    [/wal.?mart|aimart|waimart/i,'Walmart'],[/\btarget\b/i,'Target'],[/kroger/i,'Kroger'],[/\baldi\b/i,'ALDI'],
-    [/publix/i,'Publix'],[/whole\s*foods/i,'Whole Foods'],[/trader\s*joe/i,"Trader Joe's"],
-    [/meijer/i,'Meijer'],[/safeway/i,'Safeway'],[/wegmans/i,'Wegmans'],[/food\s*lion/i,'Food Lion'],
-    [/\bamazon\b/i,'Amazon'],[/best\s*buy/i,'Best Buy'],[/home\s*depot/i,'Home Depot'],
-    [/lowe.s/i,"Lowe's"],[/\bikea\b/i,'IKEA'],[/costco/i,'Costco'],[/sam.s\s*club/i,"Sam's Club"],
-    [/dollar\s*tree/i,'Dollar Tree'],[/dollar\s*general/i,'Dollar General'],[/five\s*below/i,'Five Below'],
-    [/tj\s*maxx/i,'TJ Maxx'],[/marshalls/i,'Marshalls'],[/ross\s*dress/i,'Ross'],[/kohl/i,"Kohl's"],
-    [/macy/i,"Macy's"],[/nordstrom/i,'Nordstrom'],
-    [/mcdonald/i,"McDonald's"],[/burger\s*king/i,'Burger King'],[/wendy/i,"Wendy's"],
-    [/taco\s*bell/i,'Taco Bell'],[/chipotle/i,'Chipotle'],[/\bsubway\b/i,'Subway'],
-    [/starbucks/i,'Starbucks'],[/dunkin/i,"Dunkin'"],[/chick.fil/i,'Chick-fil-A'],
-    [/domino/i,"Domino's"],[/pizza\s*hut/i,'Pizza Hut'],[/panera/i,'Panera'],
-    [/applebee/i,"Applebee's"],[/olive\s*garden/i,'Olive Garden'],
-    [/\bcvs\b/i,'CVS'],[/walgreen/i,'Walgreens'],[/rite\s*aid/i,'Rite Aid'],
-    [/\bshell\b/i,'Shell'],[/\bbp\b/i,'BP'],[/exxon/i,'Exxon'],[/chevron/i,'Chevron'],
-    [/\bmobil\b/i,'Mobil'],[/speedway/i,'Speedway'],[/sheetz/i,'Sheetz'],[/\bwawa\b/i,'Wawa'],
-    [/\bpetco\b/i,'Petco'],[/petsmart/i,'PetSmart'],
-  ];
-  const knownMatch=KNOWN_MERCHANTS.find(([rx])=>rx.test(text));
-  const isNoiseLine=l=>{
-    if(l.length<3)return true;
-    if(/^\d[\d\s\-\(\)]{6,}$/.test(l))return true;
-    if(/\d+\s+\w+\s+(st|ave|blvd|dr|rd|ln|way|ct)\b/i.test(l))return true;
-    if(/^(st#|op#|te#|tr#|ref|aid|tc#|trans|terminal|approval|manager|save money|low price)/i.test(l))return true;
-    if((l.match(/\d/g)||[]).length>l.length*0.5)return true;
-    return false;
-  };
-  let merchant=knownMatch?knownMatch[1]:null;
-  if(!merchant)merchant=await getMerchantNER(text,statusEl);
-  if(!merchant)merchant=lines.slice(0,8).find(l=>!isNoiseLine(l))||null;
-
-  // Date: look for common date patterns
-  let date=null;
-  const dateMatch=text.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-  if(dateMatch){
-    let[,m,d,y]=dateMatch;
-    if(y.length===2)y='20'+y;
-    date=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-  }
-  if(!date)date=todayISO();
-
-  // Category: keyword match on full text
-  const t=text.toLowerCase();
-  let category='other';
-  if(/shell|bp|exxon|chevron|mobil|sunoco|marathon|speedway|sheetz|wawa|gas station|fuel/i.test(t))category='gas';
-  else if(/restaurant|cafe|coffee|starbucks|dunkin|pizza|burger|taco|chipotle|mcdonald|subway|chick.fil|diner|grill|sushi|deli|bakery|applebee|waffle|ihop|sonic|wendy|domino|panera|five guys/i.test(t))category='dining';
-  else if(/kroger|aldi|publix|whole foods|trader joe|meijer|safeway|wegmans|food lion|giant|fresh market|sprouts|supermarket|grocery/i.test(t))category='groceries';
-  else if(/walmart|target|amazon|ebay|best buy|home depot|lowes|ikea|costco|sam.s club|dollar|tj maxx|marshalls|ross|kohls|jcpenney|macys|nordstrom/i.test(t))category='shopping';
-  else if(/netflix|spotify|hulu|disney|cinema|movie|theater|ticketmaster|steam|playstation|xbox|bowling|arcade|concert/i.test(t))category='entertainment';
-  else if(/pharmacy|cvs|walgreen|rite aid|hospital|clinic|doctor|medical|health|dental|vision|urgent care/i.test(t))category='health';
-  else if(/petco|petsmart|pet supplies|pet food|veterinary|vet clinic|animal/i.test(t))category='pet';
-  else if(/electric|water bill|internet|verizon|at&t|tmobile|comcast|xfinity|insurance|mortgage|rent/i.test(t))category='bills';
-
-  return{merchant,amount,date,category};
-}
 function confirmScan(){
   if(!_scannedData)return;
   const txs=getTransactions();
