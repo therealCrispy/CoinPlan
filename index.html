@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.6</div>
+      <div class="settings-desc" id="version-badge">v1.7</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.6</div>
+<div id="version-corner">v1.7</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -849,14 +849,29 @@ function handleScanFile(input){
   };
   reader.readAsDataURL(file);
 }
-async function scanWithOCR(imageDataUrl){
-  document.getElementById('scan-status').innerHTML='<span class="spin">⚙️</span> Reading receipt...';
-  const result=await Tesseract.recognize(imageDataUrl,'eng',{logger:()=>{}});
-  const text=result.data.text;
-  return parseReceiptText(text);
+let _nerPipeline=null;
+async function getMerchantNER(text,statusEl){
+  try{
+    if(!_nerPipeline){
+      if(statusEl)statusEl.innerHTML='<span class="spin">⚙️</span> Loading merchant model (first time only)...';
+      const {pipeline}=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      _nerPipeline=await pipeline('token-classification','Xenova/bert-base-NER',{aggregation_strategy:'simple'});
+    }
+    const entities=await _nerPipeline(text.slice(0,400));
+    const org=entities.find(e=>e.entity_group==='ORG'&&e.score>0.6);
+    return org?org.word.replace(/^##/,''):null;
+  }catch(e){return null;}
 }
 
-function parseReceiptText(text){
+async function scanWithOCR(imageDataUrl){
+  const statusEl=document.getElementById('scan-status');
+  statusEl.innerHTML='<span class="spin">⚙️</span> Reading receipt...';
+  const result=await Tesseract.recognize(imageDataUrl,'eng',{logger:()=>{}});
+  const text=result.data.text;
+  return parseReceiptText(text,statusEl);
+}
+
+async function parseReceiptText(text,statusEl){
   const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
 
   // Amount: find the largest dollar amount (likely the total)
@@ -900,7 +915,8 @@ function parseReceiptText(text){
     if((l.match(/\d/g)||[]).length>l.length*0.5)return true;
     return false;
   };
-  const merchant=knownMatch?knownMatch[1]:lines.slice(0,8).find(l=>!isNoiseLine(l))||null;
+  let merchant=knownMatch?knownMatch[1]:lines.slice(0,8).find(l=>!isNoiseLine(l))||null;
+  if(!merchant)merchant=await getMerchantNER(text,statusEl);
 
   // Date: look for common date patterns
   let date=null;
