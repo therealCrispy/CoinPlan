@@ -251,7 +251,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
     </div>
     <div class="settings-card">
       <div class="settings-title">Version</div>
-      <div class="settings-desc" id="version-badge">v1.9</div>
+      <div class="settings-desc" id="version-badge">v2.0</div>
     </div>
   </div>
 </section>
@@ -279,7 +279,7 @@ input,textarea,button{font-family:inherit;font-size:inherit}
 <!-- ── FAB ── -->
 <button id="fab" onclick="openAddModal()">+</button>
 
-<div id="version-corner">v1.9</div>
+<div id="version-corner">v2.0</div>
 
 <!-- ── MODAL: ADD TRANSACTION ── -->
 <div id="modal-add" class="modal">
@@ -868,9 +868,7 @@ async function scanWithOCR(imageDataUrl){
   statusEl.innerHTML='<span class="spin">⚙️</span> Reading receipt...';
   const result=await Tesseract.recognize(imageDataUrl,'eng',{logger:()=>{}});
   const text=result.data.text;
-  // DEBUG: show raw OCR header
-  alert('OCR TOP:\n'+text.slice(0,300));
-  return parseReceiptText(text,statusEl);
+return parseReceiptText(text,statusEl);
 }
 
 async function parseReceiptText(text,statusEl){
@@ -887,28 +885,27 @@ async function parseReceiptText(text,statusEl){
   }
   if(!amount&&amountMatches.length)amount=Math.max(...amountMatches);
 
-  // Merchant: check full text for known store names first, then fall back to line detection
+  // Merchant: regex match against full OCR text (handles OCR garbling)
   const KNOWN_MERCHANTS=[
-    ['walmart','Walmart'],['target','Target'],['kroger','Kroger'],['aldi','ALDI'],
-    ['publix','Publix'],['whole foods','Whole Foods'],['trader joe','Trader Joe\'s'],
-    ['meijer','Meijer'],['safeway','Safeway'],['wegmans','Wegmans'],['food lion','Food Lion'],
-    ['amazon','Amazon'],['best buy','Best Buy'],['home depot','Home Depot'],
-    ['lowe\'s','Lowe\'s'],['lowes',"Lowe's"],['ikea','IKEA'],['costco','Costco'],
-    ["sam's club","Sam's Club"],['dollar tree','Dollar Tree'],['dollar general','Dollar General'],
-    ['five below','Five Below'],['tj maxx','TJ Maxx'],['marshalls','Marshalls'],
-    ['ross dress','Ross'],['kohl','Kohl\'s'],['macy','Macy\'s'],['nordstrom','Nordstrom'],
-    ['mcdonald','McDonald\'s'],['burger king','Burger King'],["wendy's",'Wendy\'s'],['wendys',"Wendy's"],
-    ['taco bell','Taco Bell'],['chipotle','Chipotle'],['subway','Subway'],
-    ['starbucks','Starbucks'],['dunkin','Dunkin\''],['chick-fil','Chick-fil-A'],
-    ['domino','Domino\'s'],['pizza hut','Pizza Hut'],['panera','Panera'],
-    ['applebee','Applebee\'s'],['olive garden','Olive Garden'],
-    ['cvs','CVS'],['walgreen','Walgreens'],['rite aid','Rite Aid'],
-    ['shell','Shell'],['bp','BP'],['exxon','Exxon'],['chevron','Chevron'],
-    ['mobil','Mobil'],['speedway','Speedway'],['sheetz','Sheetz'],['wawa','Wawa'],
-    ['petco','Petco'],['petsmart','PetSmart'],
+    [/wal.?mart|aimart|waimart/i,'Walmart'],[/\btarget\b/i,'Target'],[/kroger/i,'Kroger'],[/\baldi\b/i,'ALDI'],
+    [/publix/i,'Publix'],[/whole\s*foods/i,'Whole Foods'],[/trader\s*joe/i,"Trader Joe's"],
+    [/meijer/i,'Meijer'],[/safeway/i,'Safeway'],[/wegmans/i,'Wegmans'],[/food\s*lion/i,'Food Lion'],
+    [/\bamazon\b/i,'Amazon'],[/best\s*buy/i,'Best Buy'],[/home\s*depot/i,'Home Depot'],
+    [/lowe.s/i,"Lowe's"],[/\bikea\b/i,'IKEA'],[/costco/i,'Costco'],[/sam.s\s*club/i,"Sam's Club"],
+    [/dollar\s*tree/i,'Dollar Tree'],[/dollar\s*general/i,'Dollar General'],[/five\s*below/i,'Five Below'],
+    [/tj\s*maxx/i,'TJ Maxx'],[/marshalls/i,'Marshalls'],[/ross\s*dress/i,'Ross'],[/kohl/i,"Kohl's"],
+    [/macy/i,"Macy's"],[/nordstrom/i,'Nordstrom'],
+    [/mcdonald/i,"McDonald's"],[/burger\s*king/i,'Burger King'],[/wendy/i,"Wendy's"],
+    [/taco\s*bell/i,'Taco Bell'],[/chipotle/i,'Chipotle'],[/\bsubway\b/i,'Subway'],
+    [/starbucks/i,'Starbucks'],[/dunkin/i,"Dunkin'"],[/chick.fil/i,'Chick-fil-A'],
+    [/domino/i,"Domino's"],[/pizza\s*hut/i,'Pizza Hut'],[/panera/i,'Panera'],
+    [/applebee/i,"Applebee's"],[/olive\s*garden/i,'Olive Garden'],
+    [/\bcvs\b/i,'CVS'],[/walgreen/i,'Walgreens'],[/rite\s*aid/i,'Rite Aid'],
+    [/\bshell\b/i,'Shell'],[/\bbp\b/i,'BP'],[/exxon/i,'Exxon'],[/chevron/i,'Chevron'],
+    [/\bmobil\b/i,'Mobil'],[/speedway/i,'Speedway'],[/sheetz/i,'Sheetz'],[/\bwawa\b/i,'Wawa'],
+    [/\bpetco\b/i,'Petco'],[/petsmart/i,'PetSmart'],
   ];
-  const tLow=text.toLowerCase();
-  const knownMatch=KNOWN_MERCHANTS.find(([k])=>tLow.includes(k));
+  const knownMatch=KNOWN_MERCHANTS.find(([rx])=>rx.test(text));
   const isNoiseLine=l=>{
     if(l.length<3)return true;
     if(/^\d[\d\s\-\(\)]{6,}$/.test(l))return true;
