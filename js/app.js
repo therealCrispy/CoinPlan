@@ -1,4 +1,4 @@
-import * as C from './core.js';
+import * as C from './core.js?v=2.0.1';
 import * as Store from './store.js';
 import * as Cloud from './cloud.js';
 let state=C.emptyState(), key='local', page='overview', month=C.isoToday().slice(0,7), owner='All', cloudRevision=0, saving=false, query='', typeFilter='all';
