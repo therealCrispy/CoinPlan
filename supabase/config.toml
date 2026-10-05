@@ -1,0 +1,4 @@
+[functions.coinplan-bank]
+verify_jwt = false
+# The function validates user JWTs itself through Supabase Auth.
+# Scheduled calls require the separate COINPLAN_CRON_SECRET.

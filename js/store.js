@@ -1,0 +1,5 @@
+import {emptyState,validate} from './core.js';
+let db;
+async function open(){if(db)return db;db=await new Promise((resolve,reject)=>{const req=indexedDB.open('coinplan-v2',1);req.onupgradeneeded=()=>req.result.createObjectStore('state');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});return db;}
+export async function read(key){const d=await open();return new Promise((resolve,reject)=>{const t=d.transaction('state');const r=t.objectStore('state').get(key);r.onsuccess=()=>{try{resolve(r.result?validate(r.result):emptyState());}catch(e){reject(e);}};r.onerror=()=>reject(r.error);});}
+export async function write(key,s,expected){validate(s);const d=await open();return new Promise((resolve,reject)=>{const t=d.transaction('state','readwrite'),store=t.objectStore('state');const r=store.get(key);r.onsuccess=()=>{if((r.result?.revision||0)!==expected){t.abort();return;}store.put({...s,revision:expected+1},key);};t.oncomplete=()=>resolve({...s,revision:expected+1});t.onabort=()=>reject(Error('Another tab changed this plan. Reload before saving.'));t.onerror=()=>reject(t.error);});}
