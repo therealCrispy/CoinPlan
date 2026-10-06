@@ -1,6 +1,6 @@
 import * as C from './core.js?v=2.0.1';
 import * as Store from './store.js';
-import * as Cloud from './cloud.js';
+import * as Cloud from './cloud.js?v=2.0.2';
 let state=C.emptyState(), key='local', page='overview', month=C.isoToday().slice(0,7), owner='All', cloudRevision=0, saving=false, query='', typeFilter='all';
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])), fmt=C.money;
 const nav=[['overview','Overview','◈'],['accounts','Accounts','▤'],['transactions','Transactions','⇄'],['budget','Budget','◷'],['bills','Bills','▦'],['goals','Goals','⚑'],['reports','Cash flow','▥'],['settings','More','···']];
